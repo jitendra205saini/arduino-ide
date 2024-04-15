@@ -1,0 +1,223 @@
+#include "DHT.h"
+#include <SoftwareSerial.h>
+#include <Servo.h>
+
+#define DHTPIN 12
+#define DHTTYPE DHT11 
+
+#define RPWM 5
+#define LPWM 6
+
+const int frountLED = A0; 
+const int backLED = A1; 
+const int leftLED = A2; 
+const int rightLED = A3; 
+const int parkingLED = A4;
+const int fan = A5; 
+const int backSound = 4;
+const int indigaterSound = 13; 
+const int hornSound = 8; 
+
+int Speed = 0;
+char switchstate; 
+int pos = 90;
+int Apos = 90;
+
+DHT dht(DHTPIN, DHTTYPE); 
+SoftwareSerial bluetooth(0, 1); // RX, TX (Change pin numbers if necessary)
+Servo myservo, myservo1, myservo2, myservo3;
+
+void setup() {
+  Serial.begin(9600);
+  Serial.println("DHTxx test!");
+  
+  dht.begin();
+  pinMode(frountLED , OUTPUT);
+  pinMode(backLED   , OUTPUT);
+  pinMode(leftLED   , OUTPUT);
+  pinMode(rightLED  , OUTPUT);
+  pinMode(parkingLED, OUTPUT);
+  pinMode(fan       , OUTPUT);
+  pinMode(backSound , OUTPUT);
+  pinMode(indigaterSound, OUTPUT);
+  pinMode(hornSound , OUTPUT);
+
+  myservo.attach(11);
+  myservo1.attach(9);
+  myservo2.attach(10);
+  myservo3.attach(3);
+  
+  bluetooth.begin(9600);
+}
+
+void loop() {
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+  float f = dht.readTemperature(true);
+  
+  if (isnan(h) || isnan(t) || isnan(f)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+
+  String message = "     " + String(t) ;
+  Serial.println(message);
+  delay(500);
+
+  while (Serial.available() > 0) { 
+    switchstate = Serial.read();
+    Serial.print(switchstate);
+    Serial.print("\ ");
+    delay(15);
+
+    switch (switchstate) {
+      case 'F':
+        digitalWrite(RPWM, LOW);
+        analogWrite(LPWM, Speed);
+        break;
+      case 'B':
+        analogWrite(RPWM, Speed);
+        digitalWrite(LPWM, LOW);
+        digitalWrite(backSound, HIGH);
+        break;
+      case 'L':
+        pos = 0;
+        myservo.write(pos);
+        break;
+      case 'R':
+        pos = 170;
+        myservo.write(pos);
+        break;
+      case 'J':
+        analogWrite(RPWM, Speed);
+        digitalWrite(LPWM, LOW);
+        pos = 0;
+        myservo.write(pos);
+        digitalWrite(backSound, HIGH);
+        break;
+      case 'I':
+        digitalWrite(RPWM, LOW);
+        analogWrite(LPWM, Speed);
+        pos = 170;
+        myservo.write(pos);
+        break;
+      case 'H':
+        analogWrite(RPWM, Speed);
+        digitalWrite(LPWM, LOW);
+        pos = 0;
+        myservo.write(pos);
+        digitalWrite(backSound, HIGH);
+        break;
+      case 'G':
+        digitalWrite(RPWM, LOW);
+        analogWrite(LPWM, Speed);
+        pos = 170;
+        myservo.write(pos);
+        break;
+      case 'W':
+        digitalWrite(frountLED, HIGH);
+        break;
+      case 'w':
+        digitalWrite(frountLED, LOW);
+        break;
+      case 'U':
+        digitalWrite(backLED, HIGH);
+        break;
+      case 'u':
+        digitalWrite(backLED, LOW);
+        break;
+      case 'O':
+        digitalWrite(leftLED, HIGH);
+        break;
+      case 'o':
+        digitalWrite(leftLED, LOW);
+        break;
+      case 'Z':
+        digitalWrite(rightLED, HIGH);
+        break;
+      case 'z':
+        digitalWrite(rightLED, LOW);
+        break;
+      case 'X':
+        digitalWrite(parkingLED, HIGH);
+        break;
+      case 'x':
+        digitalWrite(parkingLED, LOW);
+        break;
+      case 'V':
+        digitalWrite(fan , HIGH);
+        break;
+      case 'v':
+        digitalWrite(fan , LOW);
+        break;
+      case 'S':
+        pos = 60;
+        myservo.write(Apos);
+        break;
+      case 'K':
+        digitalWrite(hornSound, HIGH);
+        break;
+      case '0':
+        Speed = 100;
+        break;
+      case '1':
+        Speed = 140;
+        break;
+      case '2':
+        Speed = 153;
+        break;
+      case '3':
+        Speed = 165;
+        break;
+      case '4':
+        Speed = 178;
+        break;
+      case '5':
+        Speed = 191;
+        break;
+      case '6':
+        Speed = 204;
+        break;
+      case '7':
+        Speed = 216;
+        break;
+      case '8':
+        Speed = 229;
+        break;
+      case '9':
+        Speed = 242;
+        break;
+      case '10':
+        Speed = 255;
+        break;
+      default:
+        digitalWrite(RPWM, LOW);
+        digitalWrite(LPWM, LOW);
+        myservo.write(90);
+        myservo3.write(90);
+        break;
+    }
+  }
+
+  if (bluetooth.available() >= 2) {
+    unsigned int servopos = bluetooth.read();
+    unsigned int servopos1 = bluetooth.read();
+    unsigned int realservo = (servopos1 * 256) + servopos; 
+    Serial.println(realservo); 
+    
+    if (realservo >= 300 && realservo < 480) {
+      int servo1 = realservo;
+      servo1 = map(servo1, 100, 280, 0, 180);
+      myservo1.write(servo1);
+      Serial.println("servo 1 ON");
+    }
+    
+    if (realservo >= 500 && realservo < 680) {
+      int servo2 = realservo;
+      servo2 = map(servo2, 300, 480, 0, 180);
+      myservo2.write(servo2);
+      Serial.println("servo 2 ON");
+    }
+  }
+}
+
